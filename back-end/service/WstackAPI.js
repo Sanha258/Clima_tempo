@@ -1,5 +1,5 @@
 // Substitua pela sua chave de API válida
-const API_KEY = "19426f6f8308c9";
+const API_KEY = "4fe555082902ea92dc943bd2d1694746";
 const CITY = "Florianopolis, SC, Brazil";
 
 async function getWeather() {
