@@ -1,37 +1,83 @@
-// Substitua pela sua chave de API válida
-const API_KEY = "19426f6f8308c9";
-const CITY = "Florianopolis, SC, Brazil";
-
-async function getWeather() {
-  try {
-    const response = await fetch(
-      `https://api.weatherstack.com/forecast?access_key=${API_KEY}&query=${encodeURIComponent(CITY)}&forecast_days=7`
-    );
-
-    if (!response.ok) {
-      throw new Error(`Erro na requisição: ${response.status}`);
+async function getWeatherFlorianopolis({
+  accessKey = "4fe555082902ea92dc943bd2d1694746",
+  retries = 3,
+  backoffMs = 1000,
+  days = 7,
+  language = "pt",
+  units = "m",
+} = {}) {
+  const city = "Florianópolis, SC";
+  const base = "https://api.weatherstack.com/forecast";
+  const url = `${base}?access_key=${encodeURIComponent(accessKey)}&query=${encodeURIComponent(city)}&forecast_days=${days}&language=${encodeURIComponent(language)}&units=${encodeURIComponent(units)}`;
+ 
+  let attempt = 0;
+ 
+  while (true) {
+    try {
+      const res = await fetch(url);
+      const body = await res.json().catch(() => ({}));
+ 
+      const apiHasError = body && body.success === false && body.error;
+ 
+      if (!res.ok || apiHasError) {
+        const status = res.status || 400;
+ 
+        if (status === 429 && attempt < retries) {
+          const wait = backoffMs * Math.pow(2, attempt);
+          await new Promise(r => setTimeout(r, wait));
+          attempt++;
+          continue;
+        }
+ 
+        const apiMessage = apiHasError
+          ? `${body.error.code || ""} ${body.error.type || ""} - ${body.error.info || ""}`.trim()
+          : `HTTP ${status}`;
+ 
+        return {
+          error: true,
+          message: `Falha na chamada Weatherstack: ${apiMessage}`,
+          details: { status, response: body }
+        };
+      }
+ 
+      const { location, current, forecast } = body || {};
+      const description =
+        (current && Array.isArray(current.weather_descriptions) && current.weather_descriptions[0]) ||
+        (current && current.weather_description) ||
+        null;
+ 
+      return {
+        location,
+        current: current
+          ? {
+              temperature: current.temperature,
+              feelslike: current.feelslike,
+              humidity: current.humidity,
+              wind_speed: current.wind_speed,
+              weather_descriptions: current.weather_descriptions,
+              icon: Array.isArray(current.weather_icons) ? current.weather_icons[0] : null,
+              observation_time: current.observation_time
+            }
+          : null,
+        forecast: forecast || null,
+        description
+      };
+ 
+    } catch (err) {
+      if (attempt < retries) {
+        const wait = backoffMs * Math.pow(2, attempt);
+        await new Promise(r => setTimeout(r, wait));
+        attempt++;
+        continue;
+      }
+      return {
+        error: true,
+        message: `Erro de rede ao consultar Weatherstack: ${err.message}`,
+        details: null
+      };
     }
-
-    const data = await response.json();
-
-    if (data.error) {
-      console.error("Erro retornado pela API:", data.error.info);
-      return;
-    }
-
-    console.log("📍 Local:", data.location.name, "-", data.location.country);
-    console.log("🌡️ Temperatura atual:", data.current.temperature + "°C");
-    console.log("☁️ Clima:", data.current.weather_descriptions.join(", "));
-
-    console.log("📅 Previsão para os próximos dias:");
-    for (const [date, forecast] of Object.entries(data.forecast)) {
-      console.log(
-        `${date} → Máx: ${forecast.maxtemp}°C | Mín: ${forecast.mintemp}°C | Chance de chuva: ${forecast.daily_chance_of_rain}%`
-      );
-    }
-  } catch (error) {
-    console.error("Erro ao buscar dados:", error.message);
   }
 }
-
-getWeather();
+ 
+//getWeatherFlorianopolis().then(console.log).catch(console.error);
+module.exports = {getWeatherFlorianopolis}
