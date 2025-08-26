@@ -1,37 +1,34 @@
-// Substitua pela sua chave de API válida
-const API_KEY = "4fe555082902ea92dc943bd2d1694746";
-const CITY = "Florianopolis, SC, Brazil";
-
+// Função para buscar previsão do tempo em Florianópolis - SC
 async function getWeather() {
-  try {
-    const response = await fetch(
-      `https://api.weatherstack.com/forecast?access_key=${API_KEY}&query=${encodeURIComponent(CITY)}&forecast_days=7`
-    );
+  const accessKey = "4fe555082902ea92dc943bd2d1694746"; // sua chave da API
+  const city = "Florianópolis, SC"; // cidade que você deseja consultar
+  const url = `https://api.weatherstack.com/forecast?access_key=${accessKey}&query=${encodeURIComponent(city)}&forecast_days=7`;
 
+  try {
+    const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`Erro na requisição: ${response.status}`);
+      throw new Error("Erro na requisição: " + response.status);
     }
 
     const data = await response.json();
 
-    if (data.error) {
-      console.error("Erro retornado pela API:", data.error.info);
-      return;
-    }
+    // Retornar apenas os dados relevantes
+    return {
+      location: data.location,
+      current: {
+        temperature: data.current.temperature,
+        weather_descriptions: data.current.weather_descriptions,
+        wind_speed: data.current.wind_speed,
+        humidity: data.current.humidity
+      },
+      forecast: data.forecast
+    };
 
-    console.log("📍 Local:", data.location.name, "-", data.location.country);
-    console.log("🌡️ Temperatura atual:", data.current.temperature + "°C");
-    console.log("☁️ Clima:", data.current.weather_descriptions.join(", "));
-
-    console.log("📅 Previsão para os próximos dias:");
-    for (const [date, forecast] of Object.entries(data.forecast)) {
-      console.log(
-        `${date} → Máx: ${forecast.maxtemp}°C | Mín: ${forecast.mintemp}°C | Chance de chuva: ${forecast.daily_chance_of_rain}%`
-      );
-    }
   } catch (error) {
-    console.error("Erro ao buscar dados:", error.message);
+    console.error("Erro ao buscar dados:", error);
+    return { error: error.message };
   }
 }
 
-getWeather();
+// Exemplo de uso:
+getWeather().then(result => console.log(result));
