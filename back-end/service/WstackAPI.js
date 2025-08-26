@@ -79,5 +79,4 @@ async function getWeatherFlorianopolis({
   }
 }
  
-//getWeatherFlorianopolis().then(console.log).catch(console.error);
 module.exports = {getWeatherFlorianopolis}
